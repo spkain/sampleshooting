@@ -6,6 +6,10 @@
 #include <windows.h>
 #include <time.h>
 
+#define _WIN32_WINNT 0x0501
+#define LOCATE_ABSORUTE
+#define MAX_WIDTH 80
+#define MAX_HEIGHT 30
 #define CONSOLE_SCREEN_MAX 2
 
 typedef enum {

@@ -24,7 +24,6 @@ int mon_attack_cnt = 0;
 int main()
 {
 	gameinit();
-	//printf("start\n");
 	Print("start\n", 0, 0);
 	gameloop();
 }
@@ -33,11 +32,7 @@ void gameinit() {
 	Console_Init();
 	Console_DispCursor(false);
 
-	//Console_LOCATE(30, 15);
-	//printf("■シューティング\n");
 	Print("■シューティング\n", 30, 15);
-	//Console_LOCATE(25, 16);
-	//printf("= plz any keys to start game. =\n");
 	Print("= plz any keys to start game. =\n", 25, 16);
 	Console_Flip();
 
@@ -50,8 +45,6 @@ void gameinit() {
 void gameloop() {
 
 	while(1) {
-		//HANDLE hScreen = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-
 		fps();
 		count++;
 		monstermove();
@@ -59,14 +52,11 @@ void gameloop() {
 		bulletmove();
         attackcheck();
 		keycheck();
-		//SetConsoleActiveScreenBuffer(hScreen);
 		draw();
 		Console_Flip();
 		gamewait();
 
 		if(endcheck() == 1) {
-			//printf("clear!\n");
-			//printf("game end...");
 			Print("clear!\n", 10, 5);
 			Print("game end...", 10, 6);
   			_getch();
@@ -82,21 +72,15 @@ void draw() {
 
 	for (i = 0; i < MON_MAX; i++) {
 		if (mon[i].flag == 1) {
-			//Console_LOCATE(mon[i].x, mon[i].y);
-			//printf(MONSTER_STR);
 			Print(MONSTER_STR, mon[i].x, mon[i].y);
 		}
 	}
 
 
-	//Console_LOCATE(chara_x, chara_y);
-	//printf(PLAYER);
 	Print(PLAYER, chara_x, chara_y);
 
 	for (i = 0; i < BULLET_MAX; i++) {
 		if (bul[i].flag == 1) {
-			//Console_LOCATE(bul[i].x, bul[i].y);
-			//printf(BULLET_STR);
 			Print(BULLET_STR, bul[i].x, bul[i].y);
 		}
 	}
@@ -159,13 +143,11 @@ void fps() {
 			average += fpsc[i];
 		}
 		average /= 60;
-		//count = 0;
 	}
 #ifdef DEBUG
 	if ( average != 0 ) {
 		Console_HOME();
 		Console_COLOR(FOREGROUND_BLUE|BACKGROUND_INTENSITY);
-		//printf("%.1fFPS", 1000.0/(double)average);
 		sprintf(buff, "%.1fFPS", 1000.0/(double)average);
 		Print(buff, 0, 0);
 		Console_COLOR(WHITE|BG_BLACK);
@@ -234,8 +216,6 @@ void keycheck() {
 	switch (input_key) {
 	case VK_Q:
 		Console_HOME();
-		//printf(" end game...\n");
-		//printf(" plz any key to exit\n");
 		Print(" end game...\n", 0, 0);
 		Print(" plz any key to exit\n", 0, 1);
 		Console_Flip();
