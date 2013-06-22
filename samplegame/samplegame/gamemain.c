@@ -1,10 +1,14 @@
 #include "gamemain.h"
 
+#define DEBUG
+
 int bullet_flg[BULLET_MAX] = { 0 };
 int mon_bullet_flg[MON_BULLET_MAX] = { 0 };
 struct MONSTER mon[MON_MAX];
 struct BULLET bul[BULLET_MAX];
 struct BULLET mon_bul[MON_BULLET_MAX];
+clock_t t, start, end;
+int count = 0;
 
 int bullet_num = 0;
 int mon_bullet_num = 0;
@@ -20,36 +24,53 @@ int mon_attack_cnt = 0;
 int main()
 {
 	gameinit();
-	printf("start\n");
+	//printf("start\n");
+	Print("start\n", 0, 0);
 	gameloop();
 }
 
 void gameinit() {
+	Console_Init();
 	Console_DispCursor(false);
 
-	Console_LOCATE(30, 15);
-	printf("■シューティング\n");
-	Console_LOCATE(25, 16);
-	printf("= plz any keys to start game. =\n");
+	//Console_LOCATE(30, 15);
+	//printf("■シューティング\n");
+	Print("■シューティング\n", 30, 15);
+	//Console_LOCATE(25, 16);
+	//printf("= plz any keys to start game. =\n");
+	Print("= plz any keys to start game. =\n", 25, 16);
+	Console_Flip();
 
 	_getch();
 	Console_HOME();
+	Console_Flip();
+	start = clock();
 }
 
 void gameloop() {
+
 	while(1) {
-		draw();
+		//HANDLE hScreen = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+
+		fps();
+		count++;
 		monstermove();
         monstermake();
 		bulletmove();
         attackcheck();
 		keycheck();
-		Sleep(16);
+		//SetConsoleActiveScreenBuffer(hScreen);
+		draw();
+		Console_Flip();
+		gamewait();
 
 		if(endcheck() == 1) {
-			printf("clear!\n");
-			printf("game end...");
+			//printf("clear!\n");
+			//printf("game end...");
+			Print("clear!\n", 10, 5);
+			Print("game end...", 10, 6);
   			_getch();
+			Console_Close();
 			exit(0);
 		}
 	}
@@ -61,21 +82,25 @@ void draw() {
 
 	for (i = 0; i < MON_MAX; i++) {
 		if (mon[i].flag == 1) {
-			Console_LOCATE(mon[i].x, mon[i].y);
-			printf(MONSTER_STR);
+			//Console_LOCATE(mon[i].x, mon[i].y);
+			//printf(MONSTER_STR);
+			Print(MONSTER_STR, mon[i].x, mon[i].y);
 		}
 	}
 
 
-	Console_LOCATE(chara_x, chara_y);
-	printf(PLAYER);
+	//Console_LOCATE(chara_x, chara_y);
+	//printf(PLAYER);
+	Print(PLAYER, chara_x, chara_y);
 
 	for (i = 0; i < BULLET_MAX; i++) {
 		if (bul[i].flag == 1) {
-			Console_LOCATE(bul[i].x, bul[i].y);
-			printf(BULLET_STR);
+			//Console_LOCATE(bul[i].x, bul[i].y);
+			//printf(BULLET_STR);
+			Print(BULLET_STR, bul[i].x, bul[i].y);
 		}
 	}
+
 }
 
 void bulletshoot() {
@@ -121,6 +146,53 @@ void attackcheck() {
 	}
 }
 
+void fps() {
+	char buff[64] = {0};
+	int i;
+	static int t = 0, average = 0, fpsc[60];
+	fpsc[count%60]= GetNowCount() - t; 	
+	t = GetNowCount();
+
+	if ( count % 60 == 59 ) {
+		average = 0;
+		for (i = 0; i < 60; i++) {
+			average += fpsc[i];
+		}
+		average /= 60;
+		//count = 0;
+	}
+#ifdef DEBUG
+	if ( average != 0 ) {
+		Console_HOME();
+		Console_COLOR(FOREGROUND_BLUE|BACKGROUND_INTENSITY);
+		//printf("%.1fFPS", 1000.0/(double)average);
+		sprintf(buff, "%.1fFPS", 1000.0/(double)average);
+		Print(buff, 0, 0);
+		Console_COLOR(WHITE|BG_BLACK);
+	}
+#endif
+	return;
+}
+
+void gamewait() {
+
+	int term = 0;
+
+	term = GetNowCount();
+	(1000 / 60 > term)? Sleep(1000 / 60 - term) : Sleep(0);
+
+	start = clock();
+}
+
+double fpscount() {
+	return 0.0;
+}
+
+int GetNowCount() {
+	end = clock();
+	return (end - start);
+}
+
 void monstermove() {
     int i;
 	for (i = 0; i < MON_MAX; i++) {
@@ -162,9 +234,13 @@ void keycheck() {
 	switch (input_key) {
 	case VK_Q:
 		Console_HOME();
-		printf(" end game...\n");
-		printf(" plz any key to exit\n");
+		//printf(" end game...\n");
+		//printf(" plz any key to exit\n");
+		Print(" end game...\n", 0, 0);
+		Print(" plz any key to exit\n", 0, 1);
+		Console_Flip();
 		_getch();
+		Console_Close();
 		exit(0);
 	case VK_UP:
 		chara_y--;

@@ -2,65 +2,128 @@
 
 #define _WIN32_WINNT 0x0501
 #define LOCATE_ABSORUTE
+#define MAX_WIDTH 80
+#define MAX_HEIGHT 30
+
+CONSOLE g_console;
+
+void Console_Init()
+{
+	int i;
+	for (i = 0; i < CONSOLE_SCREEN_MAX; i++) {
+		g_console.hScreen[i] = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+	}
+	g_console.hScreenIndex = 0;
+	g_console.hOut = g_console.hWork = g_console.hScreen[g_console.hScreenIndex];
+	SetConsoleActiveScreenBuffer(g_console.hOut);
+	g_console.hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	
+}
+
+void Console_Close()
+{
+	int i;
+	for (i = 0; i < CONSOLE_SCREEN_MAX; i++) {
+		CloseHandle(g_console.hScreen[i]);
+		g_console.hScreen[i] = NULL;
+	}
+
+	g_console.hOut = g_console.hWork = NULL;
+	SetConsoleActiveScreenBuffer(g_console.hStdOut);
+	CloseHandle(g_console.hStdOut);
+	g_console.hStdOut = NULL;
+}
+
+void Console_Flip()
+{
+	g_console.hOut = g_console.hWork; // 仕事を終えたハンドルを表示用ハンドルに
+	g_console.hScreenIndex = (g_console.hScreenIndex + 1) % CONSOLE_SCREEN_MAX;
+	g_console.hWork = g_console.hScreen[g_console.hScreenIndex]; // 次の仕事用バッファ
+
+	SetConsoleActiveScreenBuffer(g_console.hOut); // 表示用のバッファをアクティブ化
+}
+
+int Print(const char * str, int x, int y)
+{
+	COORD coPos = {(SHORT)x, (SHORT)y};
+	unsigned int cell = 0;
+	SetConsoleCursorPosition(g_console.hWork, coPos);
+	WriteConsole(g_console.hWork, str, strlen(str), &cell, NULL);
+
+	return (int)cell;
+}
 
 void Console_COLOR(unsigned short color)
 {
-	HANDLE hStdout;
+	//HANDLE hStdout;
 	WORD wAttributes;
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 
-	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	GetConsoleScreenBufferInfo(hStdout, &csbi);
-
+	//hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	
+	//GetConsoleScreenBufferInfo(hStdout, &csbi);
+	GetConsoleScreenBufferInfo(g_console.hWork, &csbi);
 	wAttributes = color;
 
 	if (color & 0x08) wAttributes |= FOREGROUND_INTENSITY;
 
-	SetConsoleTextAttribute(hStdout, wAttributes);
+	//SetConsoleTextAttribute(hStdout, wAttributes);
+	SetConsoleTextAttribute(g_console.hWork, wAttributes);
 }
 
 void Console_LOCATE(int x, int y)
 {
-	HANDLE hOut;
+	//HANDLE hOut;
 	COORD co;
 	CONSOLE_SCREEN_BUFFER_INFO cinf;
 
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleScreenBufferInfo(hOut, &cinf);
-
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	//GetConsoleScreenBufferInfo(hOut, &cinf);
+	GetConsoleScreenBufferInfo(g_console.hWork, &cinf);
 	co.X = (unsigned short)x;
 	co.Y = (unsigned short)y
 #ifndef LOCATE_ABSORUTE
 		+ cinf.srWindow.Top
 #endif
 		;
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	SetConsoleCursorPosition(hOut, co);
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	//SetConsoleCursorPosition(hOut, co);
+	SetConsoleCursorPosition(g_console.hWork, co);
 }
 
 void Console_CLS()
 {
 	COORD coset;
-	HANDLE hOut;
+	//HANDLE hOut;
 	DWORD dwWritten;
 	WORD wAttribute;
 
 #ifdef LOCATE_ABSORUTE
 	SMALL_RECT WindowCorner;
 #endif
-
 	CONSOLE_SCREEN_BUFFER_INFO cinf;
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleScreenBufferInfo(hOut, &cinf);
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	//GetConsoleScreenBufferInfo(hOut, &cinf);
+	GetConsoleScreenBufferInfo(g_console.hWork, &cinf);
 
 	coset.X = 0;
 	coset.Y = 0;
 	wAttribute = 0x000f;
+	//hScreen = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 
+	if (FillConsoleOutputCharacter(g_console.hWork, ' ', cinf.dwSize.X * cinf.dwSize.Y, coset, &dwWritten)) {
+		SetConsoleTextAttribute(g_console.hWork, wAttribute);
+		FillConsoleOutputAttribute(g_console.hWork, wAttribute, cinf.dwSize.X * cinf.dwSize.Y, coset, &dwWritten);
+	/*
 	if (FillConsoleOutputCharacter(hOut, ' ', cinf.dwSize.X * cinf.dwSize.Y, coset, &dwWritten)) {
 		SetConsoleTextAttribute(hOut, wAttribute);
 		FillConsoleOutputAttribute(hOut, wAttribute, cinf.dwSize.X * cinf.dwSize.Y, coset, &dwWritten);
+	*/
+	/*
 
 #ifdef LOCATE_ABSORUTE
 		WindowCorner.Top = 0;
@@ -69,63 +132,84 @@ void Console_CLS()
 		WindowCorner.Bottom = cinf.srWindow.Bottom - cinf.srWindow.Top;
 		SetConsoleWindowInfo(hOut, TRUE, &WindowCorner);
 #endif
+		*/
 		Console_LOCATE(0,0);
 	}
 }
 
 void Console_HOME()
 {
-	HANDLE hOut;
+	//HANDLE hOut;
 
 #ifdef LOCATE_ABSORUTE
 	SMALL_RECT WindowCorner;
 #endif
 
 	CONSOLE_SCREEN_BUFFER_INFO cinf;
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleScreenBufferInfo(hOut, &cinf);
-
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	//GetConsoleScreenBufferInfo(hOut, &cinf);
+	GetConsoleScreenBufferInfo(g_console.hWork, &cinf);
 #ifdef LOCATE_ABSORUTE
 	WindowCorner.Top = 0;
 	WindowCorner.Left = 0;
 	WindowCorner.Right = cinf.srWindow.Right;
 	WindowCorner.Bottom = cinf.srWindow.Bottom - cinf.srWindow.Top;
-	SetConsoleWindowInfo(hOut, TRUE, &WindowCorner);
+	//SetConsoleWindowInfo(hOut, TRUE, &WindowCorner);
+	SetConsoleWindowInfo(g_console.hWork, TRUE, &WindowCorner);
 #endif
 	Console_LOCATE(0, 0);
 }
 
 void Console_DispCursor(BOOL fDisp)
 {
-	HANDLE hOut;
+	//HANDLE hOut;
 	CONSOLE_SCREEN_BUFFER_INFO cinf;
 	CONSOLE_CURSOR_INFO curinf;
+	COORD cod = { MAX_WIDTH, MAX_HEIGHT };
+	SMALL_RECT sr = { 0, 0, (MAX_WIDTH-1), (MAX_HEIGHT-1) };
 
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleScreenBufferInfo(hOut, &cinf);
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	//GetConsoleScreenBufferInfo(hOut, &cinf);
+	GetConsoleScreenBufferInfo(g_console.hWork, &cinf);
 
+	/*
 	if (GetConsoleCursorInfo(hOut, &curinf)) {
 		curinf.bVisible = fDisp;
 		SetConsoleCursorInfo(hOut, &curinf);
 	}
+	*/
+	if (GetConsoleCursorInfo(g_console.hWork, &curinf)) {
+		curinf.bVisible = fDisp;
+		SetConsoleCursorInfo(g_console.hWork, &curinf);
+	}
+
+	//SetConsoleScreenBufferSize(hOut, cod);
+	//SetConsoleWindowInfo(hOut, TRUE, &sr);
+	SetConsoleScreenBufferSize(g_console.hWork, cod);
+	SetConsoleWindowInfo(g_console.hWork, TRUE, &sr);
 }
 
 void Console_PutText(int x1, int y1, int x2, int y2, CHAR_INFO *data)
 {
-	HANDLE hOut;
+	//HANDLE hOut;
 	CONSOLE_SCREEN_BUFFER_INFO cinf;
 	COORD dwBufferSize;
 	COORD dwBufferCoord;
 	SMALL_RECT WriteRegion;
 
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleScreenBufferInfo(hOut, &cinf);
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
+	//GetConsoleScreenBufferInfo(hOut, &cinf);
+	GetConsoleScreenBufferInfo(g_console.hWork, &cinf);
 
 #ifndef LOCATE_ABSORUTE
 	y1 += cinf.srWindow.Top;
 	y2 += cinf.srWindow.Top;
 #endif
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	//hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_console.hWork = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	dwBufferSize.X = x2 - x1 + 1;
 	dwBufferSize.Y = y2 - y1 + 1;
@@ -138,7 +222,8 @@ void Console_PutText(int x1, int y1, int x2, int y2, CHAR_INFO *data)
 	WriteRegion.Right = x2;
 
 	WriteConsoleOutput(
-		hOut,
+	//	hOut,
+		g_console.hWork,
 		data,
 		dwBufferSize,
 		dwBufferCoord,
